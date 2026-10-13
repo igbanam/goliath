@@ -46,7 +46,9 @@ jobs:
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: version # just installs the binary onto PATH
+          # any arg works to install the binary onto PATH; healthcheck is
+          # lightweight and validates the installed binary
+          args: healthcheck
 
       - name: Validate GoReleaser config
         # `brews` is intentionally kept (homebrew_casks is macOS-only; we need
@@ -65,8 +67,4 @@ jobs:
         # Builds all platform binaries + archives + checksums into ./dist
         # without creating a GitHub release or pushing to tap/bucket.
         # Catches config and cross-compile errors on every PR.
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          distribution: goreleaser
-          version: "~> v2"
-          args: release --snapshot --clean --skip=publish
+        run: goreleaser release --snapshot --clean --skip=publish

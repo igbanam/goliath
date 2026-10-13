@@ -145,52 +145,69 @@ func printWorkspaceDeps(ws *workspace.Workspace, swapAxes bool) error {
 		return nil
 	}
 
-	// Print matrix
-	// Header row
-	fmt.Printf("         ")
+	printDepsMatrix(names, deps)
+
+	_ = swapAxes // TODO: implement axis swapping
+	return nil
+}
+
+// printDepsMatrix renders a dependency matrix with a vertical header: one rune
+// of each column name per line, so long brick names don't widen the table.
+func printDepsMatrix(names []string, deps map[string]*brickDeps) {
+	// Column width: wide enough for the longest brick name plus one space, so
+	// the vertical header carries the full name and the data cells align under
+	// it. The row-label gutter is as wide as the longest name (min 8, to fit the
+	// "brick" label) so long names don't push the matrix out of alignment.
+	longest := 8
 	for _, n := range names {
-		fmt.Printf("%-4.4s ", n)
-	}
-	fmt.Println()
-	fmt.Printf("  brick  ")
-	for _, n := range names {
-		d := deps[n]
-		brickType := " "
-		if d.IsBase {
-			brickType = "b"
-		} else {
-			brickType = "c"
+		if len(n) > longest {
+			longest = len(n)
 		}
-		_ = brickType
-		fmt.Printf("%-4.4s ", n)
 	}
-	fmt.Println()
-	fmt.Println(strings.Repeat("-", 9+len(names)*5))
+	colW := longest + 1 // one trailing space to separate columns
+
+	// Vertical header: one rune of each column name per line. The "brick" label
+	// sits on the middle header line.
+	headerLines := colW - 1
+	mid := headerLines / 2
+	for i := 0; i < headerLines; i++ {
+		label := ""
+		if i == mid {
+			label = "brick"
+		}
+		fmt.Printf("%-*s", longest, label)
+		for _, n := range names {
+			cell := " "
+			if i < len(n) {
+				cell = string(n[i])
+			}
+			fmt.Printf("%-*s", colW, cell)
+		}
+		fmt.Println()
+	}
+	fmt.Println(strings.Repeat("-", longest+len(names)*colW))
 
 	// Data rows
 	for _, rowName := range names {
 		row := deps[rowName]
-		fmt.Printf("%-8s", rowName)
+		fmt.Printf("%-*s", longest, rowName)
 		for _, colName := range names {
 			if rowName == colName {
-				fmt.Printf("  .  ")
+				fmt.Printf("%-*s", colW, ".")
 				continue
 			}
-			marker := "    "
+			marker := " "
 			// Check if row uses col
 			for _, u := range row.Uses {
 				if u == colName {
-					marker = " x  "
+					marker = "x"
 					break
 				}
 			}
-			fmt.Printf("%s ", marker)
+			fmt.Printf("%-*s", colW, marker)
 		}
 		fmt.Println()
 	}
-
-	_ = swapAxes // TODO: implement axis swapping
-	return nil
 }
 
 // printBrickDeps shows dependencies for a specific brick
@@ -280,47 +297,8 @@ func printProjectDeps(ws *workspace.Workspace, projectName string) error {
 		return nil
 	}
 
-	// Print matrix
-	colWidth := 4
-	for _, n := range names {
-		if len(n) > colWidth-1 {
-			colWidth = len(n) + 1
-		}
-	}
-
-	// Header
-	fmt.Printf("         ")
-	for _, n := range names {
-		fmt.Printf("%-*s", colWidth, n[:min(len(n), colWidth-1)])
-	}
-	fmt.Println()
-	fmt.Printf("  brick  ")
-	for _, n := range names {
-		fmt.Printf("%-*s", colWidth, n[:min(len(n), colWidth-1)])
-	}
-	fmt.Println()
-	fmt.Println(strings.Repeat("-", 9+len(names)*colWidth))
-
-	// Data rows
-	for _, rowName := range names {
-		row := deps[rowName]
-		fmt.Printf("%-8s", rowName)
-		for _, colName := range names {
-			if rowName == colName {
-				fmt.Printf("%s.", strings.Repeat(" ", colWidth-1))
-				continue
-			}
-			marker := strings.Repeat(" ", colWidth)
-			for _, u := range row.Uses {
-				if u == colName {
-					marker = fmt.Sprintf("%-*s", colWidth, "x")
-					break
-				}
-			}
-			fmt.Printf("%s", marker)
-		}
-		fmt.Println()
-	}
+	// Print matrix (same vertical header as the workspace matrix)
+	printDepsMatrix(names, deps)
 
 	return nil
 }
@@ -330,11 +308,4 @@ func printBrickProjectDeps(ws *workspace.Workspace, brickName, projectName strin
 	// For now, delegate to brick deps with project context noted
 	fmt.Printf("Dependencies for brick %q in project %q:\n\n", brickName, projectName)
 	return printBrickDeps(ws, brickName)
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

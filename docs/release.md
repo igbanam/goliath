@@ -33,7 +33,7 @@ When Polylith feature parity is confirmed:
      prerelease: auto      # was "true"
      make_latest: "true"   # was "false"
    ```
-2. Commit and push to `main`.
+2. Commit and push to `release`.
 3. Tag and push:
    ```bash
    git tag v1.0.0
@@ -62,6 +62,14 @@ The `release` workflow triggers automatically. It will:
 
 `go install ...@v0.2.0` works immediately after the tag is pushed — no extra
 step needed.
+
+> **Note on `brews` vs `homebrew_casks`:** GoReleaser deprecated `brews`
+> (formulas) in favor of `homebrew_casks`, but casks are macOS-only. We keep
+> `brews` because it generates a Formula with both `on_macos` and `on_linux`
+> stanzas, serving Linuxbrew users too. Consequences:
+> - `goreleaser check` exits **2** (valid but deprecated) instead of 0.
+>   The CI workflow treats 0 and 2 as acceptable, 1 as failure.
+> - `goreleaser release` only logs a warning; the release succeeds.
 
 ## One-time repository setup (already done, kept for reference)
 
@@ -108,6 +116,9 @@ caught before a tag is ever pushed.
 
 ## Troubleshooting
 
+- **`goreleaser check` exits 2 ("uses deprecated properties")** — expected.
+  `brews` is deprecated but intentionally used (see note above). Exit 0 =
+  clean, 1 = invalid, 2 = valid-with-deprecations.
 - **Tap/Scoop push fails with "resource not accessible by integration"** —
   the `GH_PAT` secret is missing, expired, or lacks `repo` scope. The default
   `GITHUB_TOKEN` cannot push to a different repository; a PAT is required.

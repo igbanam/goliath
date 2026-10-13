@@ -3,7 +3,8 @@
 # Distribution channels wired up here:
 #   - GitHub Releases  (all archives + checksums, via `release` — uses GITHUB_TOKEN in CI)
 #   - go install       (works automatically once the repo is public and a v* tag is pushed)
-#   - Homebrew         (`brews` pushes the formula to igbanam/homebrew-tap)
+#   - Homebrew         (`brews` pushes a Formula to igbanam/homebrew-tap;
+#                       intentionally not homebrew_casks, which is macOS-only)
 #   - Scoop            (`scoops` pushes the manifest to igbanam/scoop-bucket)
 #
 # VERSIONING (ZeroVer until v1.0.0):
@@ -76,6 +77,13 @@ release:
 
 # Homebrew — publishes Formula/goliath.rb to igbanam/homebrew-tap.
 # Users install with:  brew install igbanam/tap/goliath
+#
+# NOTE: GoReleaser deprecated `brews` in favor of `homebrew_casks`, but casks
+# are macOS-only — they don't serve Linuxbrew users. We intentionally keep
+# `brews`, which generates a proper cross-platform Formula (on_macos +
+# on_linux stanzas). It still works; `goreleaser release` only warns.
+# (Caveat: `goreleaser check` exits 2 on any deprecated property, so CI
+# tolerates that specific exit code — see .github/workflows/ci.yml.)
 brews:
   - name: goliath
     repository:

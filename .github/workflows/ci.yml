@@ -41,12 +41,25 @@ jobs:
           go-version: "1.23"
           check-latest: true
 
-      - name: Validate GoReleaser config
+      - name: Install GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: check
+          args: version # just installs the binary onto PATH
+
+      - name: Validate GoReleaser config
+        # `brews` is intentionally kept (homebrew_casks is macOS-only; we need
+        # a Formula for Linuxbrew too). `goreleaser check` exit codes:
+        #   0 = clean, 1 = invalid config, 2 = valid but uses deprecated props.
+        # We fail on anything except 0 and 2.
+        run: |
+          goreleaser check
+          code=$?
+          if [ $code -ne 0 ] && [ $code -ne 2 ]; then
+            echo "::error::goreleaser config is invalid (exit $code)"
+            exit $code
+          fi
 
       - name: Snapshot release (no publish)
         # Builds all platform binaries + archives + checksums into ./dist

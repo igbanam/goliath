@@ -6,17 +6,36 @@ Goliath brings [Polylith](https://polylith.gitbook.io/polylith/) architecture to
 
 ## Installation
 
+**Go (any platform):**
+
 ```bash
 go install github.com/igbanam/goliath/cmd/goliath@latest
 ```
 
-Or build from source:
+**Homebrew (macOS / Linux):**
+
+```bash
+brew install igbanam/tap/goliath
+```
+
+**Scoop (Windows):**
+
+```bash
+scoop bucket add goliath https://github.com/igbanam/scoop-bucket
+scoop install goliath
+```
+
+**From source:**
 
 ```bash
 git clone https://github.com/igbanam/goliath
 cd goliath
 go build -o goliath ./cmd/goliath
 ```
+
+**Pre-built binaries** for every platform are on the
+[Releases](https://github.com/igbanam/goliath/releases) page
+(Linux/macOS/Windows × amd64/arm64, with `checksums.txt`).
 
 ## Quick Start
 

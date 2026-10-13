@@ -1,0 +1,4 @@
+*.heapsnapshot
+*.log
+/goliath
+/dist/

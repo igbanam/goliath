@@ -49,7 +49,7 @@ func TestPrintWorkspaceDeps_VerticalHeaders(t *testing.T) {
 	}
 
 	out := captureStdout(t, func() error { return printWorkspaceDeps(ws, false) })
-	verticalHeaderCols(t, out)
+	verticalHeaderCols(t, out, []string{"alpha", "beta"})
 }
 
 // TestPrintProjectDeps_VerticalHeaders asserts the per-project matrix
@@ -78,12 +78,14 @@ func TestPrintProjectDeps_VerticalHeaders(t *testing.T) {
 	}
 
 	out := captureStdout(t, func() error { return printProjectDeps(ws, "myapp") })
-	verticalHeaderCols(t, out)
+	verticalHeaderCols(t, out, []string{"alpha", "beta", "shower"})
 }
 
-// verticalHeaderCols stacks the header block of a matrix output
-// column-by-column and asserts each brick name appears as a vertical run.
-func verticalHeaderCols(t *testing.T, out string) {
+// verticalHeaderCols asserts the header block of a matrix output prints each
+// column name vertically (one rune per line), aligned to the BOTTOM of the
+// header block (extra space on top for shorter names), one rune wide per
+// column with a single separating space.
+func verticalHeaderCols(t *testing.T, out string, colNames []string) {
 	t.Helper()
 
 	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
@@ -101,7 +103,24 @@ func verticalHeaderCols(t *testing.T, out string) {
 	}
 	headerLines := lines[:sep]
 
-	// Stack the header block column-by-column.
+	// The block must be exactly as tall as the longest column name.
+	height := 0
+	for _, n := range colNames {
+		if len(n) > height {
+			height = len(n)
+		}
+	}
+	if got := len(headerLines); got != height {
+		t.Fatalf("header block height = %d, want %d (one line per rune of the longest name %q).\noutput:\n%s", got, height, colNames, out)
+	}
+
+	// The label gutter sits on the BOTTOM header line.
+	if got := strings.TrimRight(headerLines[len(headerLines)-1], " "); !strings.HasPrefix(got, "brick") {
+		t.Errorf("expected the bottom header line to start with the 'brick' label, got %q.\noutput:\n%s", headerLines[len(headerLines)-1], out)
+	}
+
+	// Stack the whole header block column-by-column so a column's letters can
+	// be read as one string.
 	maxLen := 0
 	for _, ln := range headerLines {
 		if n := len([]rune(ln)); n > maxLen {
@@ -110,27 +129,50 @@ func verticalHeaderCols(t *testing.T, out string) {
 	}
 	var cols []string
 	for col := 0; col < maxLen; col++ {
-		var sb strings.Builder
-		for _, ln := range headerLines {
-			rn := []rune(ln)
-			if col < len(rn) {
-				sb.WriteRune(rn[col])
-			}
-		}
-		cols = append(cols, sb.String())
+		cols = append(cols, stackRunes(headerLines, col))
 	}
 	wantCols := "\n" + strings.Join(cols, "\n") + "\n"
 
-	for _, want := range []string{"alpha", "beta"} {
-		if !strings.Contains(wantCols, want) {
-			t.Errorf("expected vertical header to contain column name %q.\ncolumns: %q\noutput:\n%s", want, cols, out)
+	// Each name must appear bottom-aligned: a shorter name is space-padded on
+	// top so its last rune sits on the bottom header line.
+	for _, name := range colNames {
+		padded := strings.Repeat(" ", height-len(name)) + name
+		if !strings.Contains(wantCols, padded) {
+			t.Errorf("expected vertical header to contain %q bottom-aligned.\ncolumns: %q\noutput:\n%s", name, cols, out)
+		}
+	}
+
+	// Column pitch must be exactly 2 runes (1 rune of name + 1 separating
+	// space). The gutter is the longest name + 1; columns start right after, 2
+	// runes apart. Stacking the gutter position of each column pins both the
+	// pitch and the alignment.
+	gutter := height + 1
+	for j, name := range colNames {
+		got := stackRunes(headerLines, gutter+j*2)
+		want := strings.Repeat(" ", height-len(name)) + name
+		if got != want {
+			t.Errorf("column %d (%s) stacked = %q, want %q (bottom-aligned, pitch 2)", j, name, got, want)
 		}
 	}
 
 	// Data rows must still be present, each prefixed by its full brick name.
-	if !strings.Contains(out, "alpha") || !strings.Contains(out, "beta") {
-		t.Errorf("expected output to contain data rows for alpha and beta.\noutput:\n%s", out)
+	for _, name := range colNames {
+		if !strings.HasPrefix(strings.TrimRight(out, "\n"), name) && !strings.Contains(out, "\n"+name) {
+			t.Errorf("expected output to contain a data row for %q.\noutput:\n%s", name, out)
+		}
 	}
+}
+
+// stackRunes returns the runes at the given column index across all lines.
+func stackRunes(lines []string, col int) string {
+	var sb strings.Builder
+	for _, ln := range lines {
+		rn := []rune(ln)
+		if col < len(rn) {
+			sb.WriteRune(rn[col])
+		}
+	}
+	return sb.String()
 }
 
 // TestPrintWorkspaceDeps_PreservesDependencyMarks asserts that switching to

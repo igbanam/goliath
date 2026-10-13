@@ -78,6 +78,9 @@ release:
 # Homebrew — publishes Formula/goliath.rb to igbanam/homebrew-tap.
 # Users install with:  brew install igbanam/tap/goliath
 #
+# `directory: Formula` puts the formula in the conventional Formula/
+# subdirectory (Homebrew Tap convention — `brew tap` discovers it there).
+#
 # NOTE: GoReleaser deprecated `brews` in favor of `homebrew_casks`, but casks
 # are macOS-only — they don't serve Linuxbrew users. We intentionally keep
 # `brews`, which generates a proper cross-platform Formula (on_macos +
@@ -86,6 +89,7 @@ release:
 # tolerates that specific exit code — see .github/workflows/ci.yml.)
 brews:
   - name: goliath
+    directory: Formula
     repository:
       owner: igbanam
       name: homebrew-tap

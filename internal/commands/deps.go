@@ -151,60 +151,74 @@ func printWorkspaceDeps(ws *workspace.Workspace, swapAxes bool) error {
 	return nil
 }
 
-// printDepsMatrix renders a dependency matrix with a vertical header: one rune
-// of each column name per line, so long brick names don't widen the table.
+// printDepsMatrix renders a dependency matrix with a vertical header. Each
+// column name prints one rune per line, bottom-aligned, one rune wide, with a
+// single space between columns — so long brick names make the matrix taller,
+// never wider.
 func printDepsMatrix(names []string, deps map[string]*brickDeps) {
-	// Column width: wide enough for the longest brick name plus one space, so
-	// the vertical header carries the full name and the data cells align under
-	// it. The row-label gutter is as wide as the longest name (min 8, to fit the
-	// "brick" label) so long names don't push the matrix out of alignment.
-	longest := 8
+	// Header block height = the longest brick name. Columns are one rune wide
+	// plus a single separating space.
+	height := 0
 	for _, n := range names {
-		if len(n) > longest {
-			longest = len(n)
+		if len(n) > height {
+			height = len(n)
 		}
 	}
-	colW := longest + 1 // one trailing space to separate columns
+	const colW = 2 // one rune of the name + one separating space
 
-	// Vertical header: one rune of each column name per line. The "brick" label
-	// sits on the middle header line.
-	headerLines := colW - 1
-	mid := headerLines / 2
-	for i := 0; i < headerLines; i++ {
+	// Row-label gutter: as wide as the longest name plus one space (at least 5,
+	// to fit the "brick" label) so long names don't push the matrix sideways.
+	gutter := 5
+	for _, n := range names {
+		if len(n)+1 > gutter {
+			gutter = len(n) + 1
+		}
+	}
+
+	// Vertical header, bottom-aligned: the top lines are blank for shorter
+	// names, and the "brick" label occupies the gutter on the bottom line.
+	for i := 0; i < height; i++ {
+		// i == 0 is the top line; the bottom line is i == height-1, where each
+		// name prints its final rune.
 		label := ""
-		if i == mid {
+		if i == height-1 {
 			label = "brick"
 		}
-		fmt.Printf("%-*s", longest, label)
+		fmt.Printf("%-*s", gutter, label)
 		for _, n := range names {
 			cell := " "
-			if i < len(n) {
-				cell = string(n[i])
+			// Bottom-aligned: name character index from the bottom.
+			fromBottom := height - 1 - i
+			if fromBottom < len(n) {
+				cell = string(n[len(n)-1-fromBottom])
 			}
-			fmt.Printf("%-*s", colW, cell)
+			fmt.Printf("%-*s", colW-1, cell)
+			fmt.Print(" ")
 		}
 		fmt.Println()
 	}
-	fmt.Println(strings.Repeat("-", longest+len(names)*colW))
+	fmt.Println(strings.Repeat("-", gutter-1+len(names)*colW))
 
-	// Data rows
+	// Data rows: one cell per column, one rune wide ("."/"x"/blank) + one
+	// space, so the cells line up under the single-rune header columns.
 	for _, rowName := range names {
 		row := deps[rowName]
-		fmt.Printf("%-*s", longest, rowName)
+		fmt.Printf("%-*s", gutter, rowName)
 		for _, colName := range names {
 			if rowName == colName {
-				fmt.Printf("%-*s", colW, ".")
-				continue
-			}
-			marker := " "
-			// Check if row uses col
-			for _, u := range row.Uses {
-				if u == colName {
-					marker = "x"
-					break
+				fmt.Print(".")
+			} else {
+				marker := " "
+				// Check if row uses col
+				for _, u := range row.Uses {
+					if u == colName {
+						marker = "x"
+						break
+					}
 				}
+				fmt.Print(marker)
 			}
-			fmt.Printf("%-*s", colW, marker)
+			fmt.Print(" ")
 		}
 		fmt.Println()
 	}

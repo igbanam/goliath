@@ -101,14 +101,37 @@ and revoke the broad token afterwards.
 
 ```bash
 # Validate config
-goreleaser check
+goreleaser check   # exit 2 here is OK (brews is intentionally deprecated-but-valid)
 
 # Full dry run: builds everything into ./dist, no publish
 goreleaser release --snapshot --clean --skip=publish
 
 # Inspect what would be produced
 ls -la dist/
+cat dist/homebrew/goliath.rb   # verify Formula content
+cat dist/scoop/goliath.json    # verify Scoop manifest
 ```
+
+## Known issues (worked around, documented)
+
+1. **GoReleaser double-base64s the Homebrew formula on first push.**
+   The very first `brews` publish to `igbanam/homebrew-tap` wrote the formula
+   as base64-encoded-of-base64, producing an invalid Ruby file. Fixed by
+   decoding and re-pushing the file. Subsequent releases regenerate it in
+   `dist/homebrew/goliath.rb` and push correctly — but if you ever recreate
+   the tap repo from scratch, expect the first push to need this manual fix.
+   Verify after each release with:
+   ```bash
+   head -1 <(curl -s https://raw.githubusercontent.com/igbanam/homebrew-tap/main/Formula/goliath.rb)
+   # should print: # typed: false   (NOT a base64 string)
+   ```
+2. **`goreleaser check` exits 2** because `brews` is deprecated. Exit 0 =
+   clean, 1 = invalid, 2 = valid-with-deprecations. CI treats 0 and 2 as OK.
+3. **`go install` builds without ldflags** — `goliath version` from a
+   `go install` binary prints `dev (commit: unknown, built: unknown)`.
+   The released binaries on GitHub Releases / Homebrew / Scoop have the
+   version injected by GoReleaser. This is standard Go behavior
+   (`go install` doesn't pass ldflags from `.goreleaser.yaml`).
 
 CI also runs `goreleaser check` and a full snapshot release on every PR
 (`.github/workflows/ci.yml`), so config or cross-compile regressions are

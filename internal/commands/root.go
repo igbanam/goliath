@@ -7,11 +7,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Version is the goliath version
-var Version = "0.1.0"
+// Version is the goliath version.
+// Overridden at build time via -ldflags "-X .../commands.Version=<tag>" (e.g. by GoReleaser).
+var Version = "dev"
 
-// Date is the build date
-var Date = "2026-10-13"
+// Date is the build date.
+// Overridden at build time via -ldflags "-X .../commands.Date=<date>".
+var Date = "unknown"
+
+// Commit is the git commit SHA the binary was built from.
+// Overridden at build time via -ldflags "-X .../commands.Commit=<sha>".
+var Commit = "unknown"
 
 // RootCmd is the root command
 var RootCmd = &cobra.Command{

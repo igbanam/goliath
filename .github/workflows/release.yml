@@ -1,0 +1,38 @@
+name: release
+
+on:
+  push:
+    # Release on any semver tag. ZeroVer phase: v0.1.0, v0.2.0, ...
+    # Stable phase (after Polylith feature parity is confirmed): v1.0.0 and up.
+    tags:
+      - "v*"
+
+permissions:
+  contents: write # needed to create the GitHub Release and upload artifacts
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history — GoReleaser needs it for changelog generation
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          check-latest: true
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          # Auto-provided by Actions. Used for the GitHub Release itself.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Classic PAT with `repo` scope. Used to push the Homebrew formula
+          # to igbanam/homebrew-tap and the Scoop manifest to igbanam/scoop-bucket,
+          # since the default Actions token cannot write to other repositories.
+          GH_PAT: ${{ secrets.GH_PAT }}

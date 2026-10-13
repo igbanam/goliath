@@ -1,0 +1,108 @@
+# GoReleaser configuration for Goliath.
+#
+# Distribution channels wired up here:
+#   - GitHub Releases  (all archives + checksums, via `release` — uses GITHUB_TOKEN in CI)
+#   - go install       (works automatically once the repo is public and a v* tag is pushed)
+#   - Homebrew         (`brews` pushes the formula to igbanam/homebrew-tap)
+#   - Scoop            (`scoops` pushes the manifest to igbanam/scoop-bucket)
+#
+# VERSIONING (ZeroVer until v1.0.0):
+#   Goliath uses ZeroVer (0.y.z) until feature parity with Polylith is confirmed.
+#   During this phase:
+#     - release.prerelease: "true"      → GitHub marks every release as "Pre-release"
+#     - release.make_latest: "false"    → the "latest" release badge stays on the last stable
+#     - brews / scoops                  → still publish, since 0.x tags are NOT semver
+#                                         prereleases, so skip_upload: auto would not
+#                                         hold them back. Formula/manifest versions will
+#                                         read 0.1.0, 0.2.0, ... which is expected under
+#                                         ZeroVer and signals instability to users.
+#   When Polylith feature parity is confirmed, cut v1.0.0 and flip:
+#     - git tag v1.0.0            (the release pipeline runs on any v* tag)
+#     - release.prerelease: auto  (v1.0.0 has no prerelease suffix → published as stable)
+#     - release.make_latest: "true"
+#     From then on, standard semver applies.
+#
+# Required GitHub secrets in igbanam/goliath (see docs/release.md):
+#   GITHUB_TOKEN            — provided automatically by GitHub Actions (contents: write)
+#   GH_PAT                  — classic PAT with `repo` scope; used to push to the
+#                             igbanam/homebrew-tap and igbanam/scoop-bucket repos
+#                             (the default Actions token cannot push to other repos)
+
+version: 2
+
+project_name: goliath
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: goliath
+    main: ./cmd/goliath
+    binary: goliath
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X github.com/igbanam/goliath/internal/commands.Version={{.Version}}
+      - -X github.com/igbanam/goliath/internal/commands.Date={{.CommitDate}}
+      - -X github.com/igbanam/goliath/internal/commands.Commit={{.FullCommit}}
+
+archives:
+  - id: goliath
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+      - docs/commands.md
+
+checksum:
+  name_template: "checksums.txt"
+
+# GitHub Releases — the source of truth for all other channels.
+release:
+  # ZeroVer phase: mark every release as a pre-release on GitHub.
+  # Flip to `auto` when v1.0.0 is cut.
+  prerelease: "true"
+  # ZeroVer phase: don't mark 0.x releases as "latest".
+  # Flip to "true" when v1.0.0 is cut.
+  make_latest: "false"
+
+# Homebrew — publishes Formula/goliath.rb to igbanam/homebrew-tap.
+# Users install with:  brew install igbanam/tap/goliath
+brews:
+  - name: goliath
+    repository:
+      owner: igbanam
+      name: homebrew-tap
+      token: "{{ .Env.GH_PAT }}"
+    commit_author:
+      name: goliath-release-bot
+      email: goliath-release-bot@users.noreply.github.com
+    homepage: "https://github.com/igbanam/goliath"
+    description: "Polylith-style workspace management for Go"
+    license: "MIT"
+    test: |
+      system "#{bin}/goliath version"
+
+# Scoop — publishes goliath.json to igbanam/scoop-bucket.
+# Users install with:  scoop bucket add goliath https://github.com/igbanam/scoop-bucket
+#                       scoop install goliath
+scoops:
+  - name: goliath
+    repository:
+      owner: igbanam
+      name: scoop-bucket
+      token: "{{ .Env.GH_PAT }}"
+    commit_author:
+      name: goliath-release-bot
+      email: goliath-release-bot@users.noreply.github.com
+    homepage: "https://github.com/igbanam/goliath"
+    description: "Polylith-style workspace management for Go"
+    license: "MIT"

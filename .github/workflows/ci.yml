@@ -42,22 +42,29 @@ jobs:
           check-latest: true
 
       - name: Install GoReleaser
+        # `install-only: true` makes the action install the binary and add it
+        # to PATH for subsequent steps, without running any goreleaser
+        # subcommand (see goreleaser-action README "Install Only" section).
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: "~> v2"
-          # any arg works to install the binary onto PATH; healthcheck is
-          # lightweight and validates the installed binary
-          args: healthcheck
+          install-only: true
 
       - name: Validate GoReleaser config
         # `brews` is intentionally kept (homebrew_casks is macOS-only; we need
         # a Formula for Linuxbrew too). `goreleaser check` exit codes:
         #   0 = clean, 1 = invalid config, 2 = valid but uses deprecated props.
+        # GitHub Actions runs steps with `bash -e`, which aborts on non-zero;
+        # run check with `|| true` semantics and inspect the code ourselves.
         # We fail on anything except 0 and 2.
+        shell: bash
         run: |
+          set +e
           goreleaser check
           code=$?
+          set -e
+          echo "goreleaser check exit code: $code"
           if [ $code -ne 0 ] && [ $code -ne 2 ]; then
             echo "::error::goreleaser config is invalid (exit $code)"
             exit $code
